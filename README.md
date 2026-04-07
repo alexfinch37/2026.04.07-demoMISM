@@ -1,6 +1,6 @@
 # 2026.04.07-demoMISM
 
-# claudeDemoMISM
+#DemoMISM
 
 A demo project for MISM coursework, built with Python 3.12.
 
@@ -28,7 +28,7 @@ python main.py
 ## Project Structure
 
 ```
-claudeDemoMISM/
+DemoMISM/
 ├── .gitignore
 ├── README.md
 ├── requirements.txt
