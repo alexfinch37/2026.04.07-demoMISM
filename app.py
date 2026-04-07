@@ -12,6 +12,10 @@ from flask import Flask, Response, jsonify
 from threading import Thread, Lock
 import json
 
+
+FONT_SIZE = 3
+FONT_THICKNESS = 9
+
 app = Flask(__name__)
 
 # ── Model & detection config (mirrors your original script) ──────────────────
@@ -93,7 +97,7 @@ def camera_loop():
             cv2.rectangle(annotated, (d['x1'], d['y1']), (d['x2'], d['y2']), color, 2)
             label_text = f"{d['label']} {d['conf']:.2f}"
             cv2.putText(annotated, label_text, (d['x1'], d['y1'] - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+                        cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE, color, FONT_THICKNESS)
 
         # Alert overlay on frame
         with lock:
@@ -105,7 +109,7 @@ def camera_loop():
                             (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
 
         cv2.putText(annotated, f"Detections: {len(boxes)}", (10, annotated.shape[0] - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE, (255, 255, 255), FONT_THICKNESS)
 
         # Encode to JPEG
         _, buffer = cv2.imencode('.jpg', annotated, [cv2.IMWRITE_JPEG_QUALITY, 80])
