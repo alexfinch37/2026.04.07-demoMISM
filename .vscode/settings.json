@@ -1,0 +1,8 @@
+{
+    "python.analysis.typeCheckingMode": "off",
+    "python-envs.pythonProjects": [],
+    "python.analysis.diagnosticMode": "openFilesOnly",
+    "mypy-type-checker.args": ["--ignore-missing-imports"],
+    "pylint.args": ["--generated-members=cv2.*"],
+    "pylint.enabled": false
+}
