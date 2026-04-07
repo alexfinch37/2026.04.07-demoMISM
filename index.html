@@ -6,9 +6,9 @@
 <title>True Guard — Live</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1923; color: #e2e8f0; min-height: 100vh; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1923; color: #e2e8f0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid #1e2d3d; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; border-bottom: 1px solid #1e2d3d; flex-shrink: 0; }
   .logo { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 600; }
   .shield { width: 36px; height: 36px; background: #1a4a8a; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
   .status-pill { font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; letter-spacing: 0.04em; }
@@ -16,15 +16,17 @@
   .danger { background: #3d0d0d; color: #f87171; border: 1px solid #f87171; animation: flashborder 0.8s infinite; }
   @keyframes flashborder { 0%,100%{border-color:#f87171} 50%{border-color:#7f1d1d} }
 
-  .layout { display: grid; grid-template-columns: 1fr 300px; gap: 16px; padding: 16px 24px; }
+  .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 12px 24px; flex: 1; overflow: hidden; min-height: 0; }
   @media(max-width:700px){ .layout{grid-template-columns:1fr} }
 
-  .panel { background: #1a2535; border-radius: 12px; padding: 16px; }
+  .layout > div:first-child { display: flex; flex-direction: column; overflow: hidden; min-height: 0; gap: 8px; }
+
+  .panel { background: #1a2535; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; min-height: 0; }
   .panel-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; margin-bottom: 10px; font-weight: 600; }
 
   /* Camera feed */
-  .feed-wrap { position: relative; background: #000; border-radius: 8px; overflow: hidden; }
-  .feed-wrap img { width: 100%; display: block; }
+  .feed-wrap { position: relative; background: #000; border-radius: 8px; overflow: hidden; flex: 1; min-height: 0; }
+  .feed-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .live-badge { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.65); color: #f87171; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 5px; display: flex; align-items: center; gap: 5px; }
   .live-dot { width: 7px; height: 7px; background: #ef4444; border-radius: 50%; animation: blink 1.2s infinite; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
@@ -43,10 +45,10 @@
   .dismiss-btn:hover { background: #7f1d1d; }
 
   /* Sidebar */
-  .sidebar { display: flex; flex-direction: column; gap: 12px; }
+  .sidebar { display: flex; flex-direction: column; gap: 12px; overflow: hidden; min-height: 0; }
 
   /* Detection list */
-  .det-list { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+  .det-list { display: flex; flex-direction: column; gap: 6px; max-height: 130px; overflow-y: auto; }
   .det-item { background: #0f1923; border-radius: 6px; padding: 8px 10px; border-left: 3px solid #1a4a8a; }
   .det-item.person  { border-left-color: #ef4444; }
   .det-item.vehicle { border-left-color: #f59e0b; }
@@ -56,7 +58,7 @@
   .empty-msg { font-size: 12px; color: #475569; }
 
   /* Log */
-  .log-list { display: flex; flex-direction: column; gap: 5px; max-height: 180px; overflow-y: auto; }
+  .log-list { display: flex; flex-direction: column; gap: 5px; flex: 1; overflow-y: auto; min-height: 0; }
   .log-item { background: #0f1923; border-radius: 5px; padding: 7px 9px; }
   .log-time { font-size: 10px; color: #475569; }
   .log-msg  { font-size: 12px; color: #94a3b8; margin-top: 1px; }
@@ -67,6 +69,7 @@
   .suppress-btn:hover { background: #0d3d1e; }
   .suppress-btn.active { background: #7f1d1d; border-color: #f87171; color: #f87171; }
   .suppress-btn.active:hover { background: #3d0d0d; }
+  .model-info { font-size: 11px; color: #64748b; flex-shrink: 0; }
   .model-info span { color: #475569; }
 </style>
 </head>
@@ -83,7 +86,7 @@
 <div class="layout">
   <!-- Left: camera feed -->
   <div>
-    <div class="panel">
+    <div class="panel" style="flex:1">
       <div class="panel-title">Front door camera — live feed</div>
       <div class="feed-wrap">
         <img id="stream" src="/video_feed" alt="Live camera feed">
