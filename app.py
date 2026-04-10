@@ -1,7 +1,7 @@
 """
-True Guard — Flask streaming server
+Flask streaming server
 Run: python app.py
-Then open: http://localhost:5000
+Then open: http://localhost:5001
 """
 
 from ultralytics import YOLO
@@ -18,23 +18,22 @@ FONT_THICKNESS = 9
 
 app = Flask(__name__)
 
-# ── Model & detection config (mirrors your original script) ──────────────────
 model = YOLO('yolov8n.pt')
 DISABLED_CLASSES = ['cat', 'bear', 'bird']
 ALERT_COOLDOWN = 5
 ALERT_DURATION = 5
 
-# ── Shared state (written by camera thread, read by Flask routes) ─────────────
 lock = Lock()
-latest_frame = None          # raw JPEG bytes of annotated frame
+latest_frame = None
 detection_state = {
-    "detections": [],        # list of {label, conf, x1,y1,x2,y2}
+    "detections": [],
     "person_detected": False,
+    "bottle_detected": False,
     "alert_active": False,
     "alert_start": 0,
     "last_alert_time": 0,
     "total_detections": 0,
-    "alerts_suppressed": False,  # when True, detections run but no alert fires
+    "alerts_suppressed": False,
 }
 
 
@@ -55,6 +54,7 @@ def camera_loop():
 
         boxes = []
         person_detected = False
+        bottle_detected = False
 
         for box in results[0].boxes:
             x1, y1, x2, y2 = map(int, box.xyxy[0])
@@ -65,6 +65,8 @@ def camera_loop():
                 continue
             if cls == 'person':
                 person_detected = True
+            if cls == 'bottle':
+                bottle_detected = True
 
             boxes.append({
                 'label': cls,
@@ -74,7 +76,6 @@ def camera_loop():
 
         current_time = time.time()
 
-        # Alert logic (same as your original script)
         with lock:
             state = detection_state
             if (person_detected and not state["alerts_suppressed"]
@@ -88,30 +89,34 @@ def camera_loop():
 
             state["detections"] = boxes
             state["person_detected"] = person_detected
+            state["bottle_detected"] = bottle_detected
             state["total_detections"] = len(boxes)
 
-        # Draw bounding boxes on frame
         annotated = frame.copy()
         for d in boxes:
-            color = (0, 0, 255) if d['label'] == 'person' else (0, 200, 255)
+            if d['label'] == 'person':
+                color = (0, 0, 255)
+            elif d['label'] == 'bottle':
+                color = (0, 255, 128)
+            else:
+                color = (0, 200, 255)
+
             cv2.rectangle(annotated, (d['x1'], d['y1']), (d['x2'], d['y2']), color, 2)
             label_text = f"{d['label']} {d['conf']:.2f}"
             cv2.putText(annotated, label_text, (d['x1'], d['y1'] - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE, color, FONT_THICKNESS)
 
-        # Alert overlay on frame
         with lock:
             if detection_state["alert_active"]:
                 overlay = annotated.copy()
                 cv2.rectangle(overlay, (0, 0), (annotated.shape[1], 50), (0, 0, 200), -1)
                 cv2.addWeighted(overlay, 0.6, annotated, 0.4, 0, annotated)
-                cv2.putText(annotated, "PERSON DETECTED — ALERT ACTIVE",
+                cv2.putText(annotated, "PERSON DETECTED",
                             (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
 
-        cv2.putText(annotated, f"Detections: {len(boxes)}", (10, annotated.shape[0] - 10),
+        cv2.putText(annotated, f"Objects: {len(boxes)}", (10, annotated.shape[0] - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE, (255, 255, 255), FONT_THICKNESS)
 
-        # Encode to JPEG
         _, buffer = cv2.imencode('.jpg', annotated, [cv2.IMWRITE_JPEG_QUALITY, 80])
         with lock:
             latest_frame = buffer.tobytes()
@@ -120,7 +125,6 @@ def camera_loop():
 
 
 def generate_stream():
-    """Yields MJPEG frames for the browser."""
     while True:
         with lock:
             frame = latest_frame
@@ -129,10 +133,8 @@ def generate_stream():
             continue
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-        time.sleep(1 / 30)  # ~30 fps cap
+        time.sleep(1 / 30)
 
-
-# ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.route('/')
 def index():
@@ -149,9 +151,9 @@ def video_feed():
 def state():
     with lock:
         s = detection_state.copy()
-    # Make JSON-serialisable
     s['alert_active'] = bool(s['alert_active'])
     s['person_detected'] = bool(s['person_detected'])
+    s['bottle_detected'] = bool(s['bottle_detected'])
     return jsonify(s)
 
 
@@ -173,8 +175,7 @@ def toggle_suppress():
 
 
 if __name__ == '__main__':
-    # Start camera inference in background thread
     t = Thread(target=camera_loop, daemon=True)
     t.start()
-    print("True Guard running → http://localhost:5001")
+    print("Running → http://localhost:5001")
     app.run(host='0.0.0.0', port=5001, debug=False)

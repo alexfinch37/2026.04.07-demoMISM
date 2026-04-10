@@ -3,245 +3,143 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>True Guard — Live</title>
+<title>Live Feed</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1923; color: #e2e8f0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-  header { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; border-bottom: 1px solid #1e2d3d; flex-shrink: 0; }
-  .logo { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 600; }
-  .shield { width: 36px; height: 36px; background: #1a4a8a; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-  .status-pill { font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; letter-spacing: 0.04em; }
-  .armed  { background: #0d3d1e; color: #4ade80; border: 1px solid #4ade80; }
-  .danger { background: #3d0d0d; color: #f87171; border: 1px solid #f87171; animation: flashborder 0.8s infinite; }
-  @keyframes flashborder { 0%,100%{border-color:#f87171} 50%{border-color:#7f1d1d} }
+  body {
+    background: #000;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+  }
 
-  .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 12px 24px; flex: 1; overflow: hidden; min-height: 0; }
-  @media(max-width:700px){ .layout{grid-template-columns:1fr} }
+  #feed-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
 
-  .layout > div:first-child { display: flex; flex-direction: column; overflow: hidden; min-height: 0; gap: 8px; }
+  #stream {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    transition: filter 1.2s ease;
+    filter: brightness(0.25);
+  }
 
-  .panel { background: #1a2535; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; min-height: 0; }
-  .panel-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; margin-bottom: 10px; font-weight: 600; }
+  #stream.bright {
+    filter: brightness(1);
+  }
 
-  /* Camera feed */
-  .feed-wrap { position: relative; background: #000; border-radius: 8px; overflow: hidden; flex: 1; min-height: 0; }
-  .feed-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
-  .live-badge { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.65); color: #f87171; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 5px; display: flex; align-items: center; gap: 5px; }
-  .live-dot { width: 7px; height: 7px; background: #ef4444; border-radius: 50%; animation: blink 1.2s infinite; }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
-  .det-badge { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.65); color: #e2e8f0; font-size: 11px; padding: 3px 9px; border-radius: 5px; }
+  #bottle-popup {
+    display: none;
+    position: absolute;
+    bottom: 30px;
+    right: 30px;
+    background: rgba(255,255,255,0.97);
+    border-radius: 12px;
+    padding: 16px;
+    width: 210px;
+    text-align: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
 
-  /* Confidence bar */
-  .conf-row { display: flex; justify-content: space-between; font-size: 12px; color: #64748b; margin: 10px 0 5px; }
-  .conf-track { height: 6px; background: #2d3748; border-radius: 3px; overflow: hidden; }
-  .conf-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease, background 0.4s ease; width: 0%; background: #22c55e; }
+  #bottle-popup.visible {
+    display: flex;
+  }
 
-  /* Alert banner */
-  .alert-banner { display: none; background: #7f1d1d; border: 1px solid #ef4444; border-radius: 8px; padding: 12px 14px; margin-top: 12px; }
-  .alert-banner h3 { color: #fca5a5; font-size: 14px; font-weight: 600; }
-  .alert-banner p  { color: #fca5a5; font-size: 12px; opacity: 0.75; margin-top: 3px; }
-  .dismiss-btn { margin-top: 8px; background: #991b1b; color: #fca5a5; border: none; padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
-  .dismiss-btn:hover { background: #7f1d1d; }
+  #bottle-popup img.bottle-img {
+    width: 100%;
+    height: 110px;
+    object-fit: contain;
+    border-radius: 6px;
+  }
 
-  /* Sidebar */
-  .sidebar { display: flex; flex-direction: column; gap: 12px; overflow: hidden; min-height: 0; }
+  #bottle-popup p {
+    font-size: 12px;
+    color: #374151;
+    font-weight: 500;
+  }
 
-  /* Detection list */
-  .det-list { display: flex; flex-direction: column; gap: 6px; max-height: 130px; overflow-y: auto; }
-  .det-item { background: #0f1923; border-radius: 6px; padding: 8px 10px; border-left: 3px solid #1a4a8a; }
-  .det-item.person  { border-left-color: #ef4444; }
-  .det-item.vehicle { border-left-color: #f59e0b; }
-  .det-item.other   { border-left-color: #22c55e; }
-  .det-label { font-size: 13px; font-weight: 500; color: #e2e8f0; }
-  .det-conf  { font-size: 11px; color: #64748b; margin-top: 2px; }
-  .empty-msg { font-size: 12px; color: #475569; }
-
-  /* Log */
-  .log-list { display: flex; flex-direction: column; gap: 5px; flex: 1; overflow-y: auto; min-height: 0; }
-  .log-item { background: #0f1923; border-radius: 5px; padding: 7px 9px; }
-  .log-time { font-size: 10px; color: #475569; }
-  .log-msg  { font-size: 12px; color: #94a3b8; margin-top: 1px; }
-  .log-item.alert .log-msg { color: #fca5a5; }
-
-  /* Model info */
-  .suppress-btn { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #4ade80; background: transparent; color: #4ade80; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 10px; }
-  .suppress-btn:hover { background: #0d3d1e; }
-  .suppress-btn.active { background: #7f1d1d; border-color: #f87171; color: #f87171; }
-  .suppress-btn.active:hover { background: #3d0d0d; }
-  .model-info { font-size: 11px; color: #64748b; flex-shrink: 0; }
-  .model-info span { color: #475569; }
+  #bottle-popup img.qr {
+    width: 120px;
+    height: 120px;
+  }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="logo">
-    <div class="shield">&#x1F6E1;</div>
-    True Guard
-  </div>
-  <div class="status-pill armed" id="statusPill">ARMED — ALL CLEAR</div>
-</header>
+<div id="feed-container">
+  <img id="stream" src="/video_feed" alt="Live feed">
 
-<div class="layout">
-  <!-- Left: camera feed -->
-  <div>
-    <div class="panel" style="flex:1">
-      <div class="panel-title">Front door camera — live feed</div>
-      <div class="feed-wrap">
-        <img id="stream" src="/video_feed" alt="Live camera feed">
-        <div class="live-badge"><div class="live-dot"></div> LIVE</div>
-        <div class="det-badge" id="detBadge">Detections: 0</div>
-      </div>
-
-      <div class="conf-row">
-        <span>YOLOv8n confidence (threshold 0.80)</span>
-        <span id="confVal">—</span>
-      </div>
-      <div class="conf-track"><div class="conf-fill" id="confFill"></div></div>
-
-      <div class="alert-banner" id="alertBanner">
-        <h3 id="alertTitle">PERSON DETECTED</h3>
-        <p>Alert active — auto-dismisses after 5 s (cooldown 5 s)</p>
-        <button class="dismiss-btn" onclick="dismiss()">Dismiss</button>
-      </div>
-
-      <button class="suppress-btn" id="suppressBtn" onclick="toggleSuppress()">
-        Person alerts: ON — click to suppress
-      </button>
-    </div>
-
-    <div class="model-info">
-      Model: <span>YOLOv8n</span> &nbsp;·&nbsp;
-      Disabled classes: <span>cat, bear, bird</span> &nbsp;·&nbsp;
-      Alert cooldown: <span>5 s</span> &nbsp;·&nbsp;
-      Alert duration: <span>5 s</span> &nbsp;·&nbsp;
-      Conf threshold: <span>0.80</span>
-    </div>
-  </div>
-
-  <!-- Right: sidebar -->
-  <div class="sidebar">
-    <div class="panel">
-      <div class="panel-title">Current detections</div>
-      <div class="det-list" id="detList">
-        <div class="empty-msg">No objects detected.</div>
-      </div>
-    </div>
-
-    <div class="panel" style="flex:1">
-      <div class="panel-title">Event log</div>
-      <div class="log-list" id="logList">
-        <div class="empty-msg">Waiting for events…</div>
-      </div>
-    </div>
+  <div id="bottle-popup">
+    <p>Hydrate smarter.</p>
+    <img class="bottle-img"
+         src="https://images.rei.com/media/2e539f50-b96e-4428-94fd-e2b1e2c82c91?size=784x588"
+         alt="Metal water bottle"
+         onerror="this.style.display='none'">
+    <p style="font-size:11px;color:#6b7280;">Scan for details</p>
+    <img class="qr"
+         src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://www.hydroflask.com"
+         alt="QR code">
   </div>
 </div>
 
 <script>
   const POLL_MS = 500;
-  let prevAlert = false;
-  let logItems = [];
+  const DIM_DELAY_MS = 10000;
+  const BOTTLE_HIDE_DELAY_MS = 5000;
 
-  function categoryOf(label) {
-    if (label === 'person') return 'person';
-    if (['car','truck','bus','motorcycle','bicycle'].includes(label)) return 'vehicle';
-    return 'other';
+  let dimTimer = null;
+  let bottleTimer = null;
+
+  function isBottleDetected(detections) {
+    return detections.some(d => d.label === 'bottle');
   }
 
   function updateUI(state) {
-    // Status pill
-    const pill = document.getElementById('statusPill');
-    if (state.alert_active) {
-      pill.textContent = 'ALERT — PERSON DETECTED';
-      pill.className = 'status-pill danger';
-    } else if (state.total_detections > 0) {
-      pill.textContent = 'ACTIVITY DETECTED';
-      pill.className = 'status-pill danger';
+    const stream = document.getElementById('stream');
+    const bottlePopup = document.getElementById('bottle-popup');
+
+    // Brightness logic
+    if (state.person_detected) {
+      if (dimTimer) {
+        clearTimeout(dimTimer);
+        dimTimer = null;
+      }
+      stream.classList.add('bright');
     } else {
-      pill.textContent = 'ARMED — ALL CLEAR';
-      pill.className = 'status-pill armed';
+      if (stream.classList.contains('bright') && dimTimer === null) {
+        dimTimer = setTimeout(() => {
+          stream.classList.remove('bright');
+          dimTimer = null;
+        }, DIM_DELAY_MS);
+      }
     }
 
-    // Detection count badge
-    document.getElementById('detBadge').textContent = `Detections: ${state.total_detections}`;
-
-    // Confidence bar
-    const maxConf = state.detections.length
-      ? Math.max(...state.detections.map(d => d.conf))
-      : 0;
-    const pct = Math.round(maxConf * 100);
-    document.getElementById('confVal').textContent = pct ? `${pct}%` : '—';
-    const fill = document.getElementById('confFill');
-    fill.style.width = pct + '%';
-    fill.style.background = pct >= 90 ? '#22c55e' : pct >= 80 ? '#f59e0b' : '#ef4444';
-
-    // Alert banner
-    const banner = document.getElementById('alertBanner');
-    if (state.alert_active) {
-      banner.style.display = 'block';
-      document.getElementById('alertTitle').textContent =
-        state.person_detected ? 'PERSON DETECTED' : 'ALERT ACTIVE';
+    // Bottle popup logic
+    if (isBottleDetected(state.detections)) {
+      // Bottle present — show immediately, cancel any pending hide
+      if (bottleTimer) {
+        clearTimeout(bottleTimer);
+        bottleTimer = null;
+      }
+      bottlePopup.classList.add('visible');
     } else {
-      banner.style.display = 'none';
-    }
-
-    // Log a new event when alert flips on
-    if (state.alert_active && !prevAlert) {
-      addLog('Person detected — alert triggered', true);
-    } else if (!state.alert_active && prevAlert) {
-      addLog('Alert dismissed', false);
-    }
-    prevAlert = state.alert_active;
-
-    // Detection list
-    const list = document.getElementById('detList');
-    if (state.detections.length === 0) {
-      list.innerHTML = '<div class="empty-msg">No objects detected.</div>';
-    } else {
-      list.innerHTML = state.detections.map(d => {
-        const cat = categoryOf(d.label);
-        return `<div class="det-item ${cat}">
-          <div class="det-label">${d.label}</div>
-          <div class="det-conf">Confidence: ${Math.round(d.conf * 100)}% &nbsp;·&nbsp; bbox (${d.x1},${d.y1}) → (${d.x2},${d.y2})</div>
-        </div>`;
-      }).join('');
-    }
-  }
-
-  function addLog(msg, isAlert) {
-    const now = new Date().toLocaleTimeString();
-    logItems.unshift({ msg, isAlert, time: now });
-    if (logItems.length > 20) logItems.pop();
-    const logList = document.getElementById('logList');
-    const empty = logList.querySelector('.empty-msg');
-    if (empty) empty.remove();
-    logList.innerHTML = logItems.map(l =>
-      `<div class="log-item ${l.isAlert ? 'alert' : ''}">
-        <div class="log-time">${l.time}</div>
-        <div class="log-msg">${l.msg}</div>
-      </div>`
-    ).join('');
-  }
-
-  async function dismiss() {
-    await fetch('/dismiss', { method: 'POST' });
-  }
-
-  async function toggleSuppress() {
-    const r = await fetch('/toggle_suppress', { method: 'POST' });
-    const data = await r.json();
-    updateSuppressBtn(data.alerts_suppressed);
-  }
-
-  function updateSuppressBtn(suppressed) {
-    const btn = document.getElementById('suppressBtn');
-    if (suppressed) {
-      btn.textContent = 'Person alerts: SUPPRESSED — click to re-enable';
-      btn.classList.add('active');
-    } else {
-      btn.textContent = 'Person alerts: ON — click to suppress';
-      btn.classList.remove('active');
+      // Bottle gone — start hide timer if still visible and not already counting
+      if (bottlePopup.classList.contains('visible') && bottleTimer === null) {
+        bottleTimer = setTimeout(() => {
+          bottlePopup.classList.remove('visible');
+          bottleTimer = null;
+        }, BOTTLE_HIDE_DELAY_MS);
+      }
     }
   }
 
@@ -250,10 +148,7 @@
       const r = await fetch('/state');
       const state = await r.json();
       updateUI(state);
-      updateSuppressBtn(state.alerts_suppressed);
-    } catch(e) {
-      // server not reachable yet
-    }
+    } catch(e) {}
     setTimeout(poll, POLL_MS);
   }
 
